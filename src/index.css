@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .input {
+    @apply w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/40;
+  }
+}
+
+:root {
+  --page-bg: #faf7f1;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background-color: var(--page-bg);
+  color: #1c2420;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Tabular figures for money/quantity columns so digits line up like a real ledger */
+.figures {
+  font-family: 'IBM Plex Mono', monospace;
+  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Signature motif: a punched perforation edge, like a till-roll receipt being torn.
+   Used on the floating cart pill and on receipt-style summary cards. */
+.perforated-top {
+  position: relative;
+}
+.perforated-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 12px;
+  transform: translateY(-50%);
+  background-image: radial-gradient(circle at 10px 6px, var(--page-bg) 6px, transparent 6.5px);
+  background-size: 20px 12px;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+.perforated-bottom {
+  position: relative;
+}
+.perforated-bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+  transform: translateY(50%);
+  background-image: radial-gradient(circle at 10px 6px, var(--page-bg) 6px, transparent 6.5px);
+  background-size: 20px 12px;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
