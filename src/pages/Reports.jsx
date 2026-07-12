@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
 import TopBar from '../components/nav/TopBar'
 import Card from '../components/ui/Card'
 import ReportCard from '../components/reports/ReportCard'
 import { formatINR } from '../utils/currency'
+import { getPresetRange } from '../utils/dateRanges'
 import {
   getSalesTrend,
   getDashboardStats,
@@ -14,6 +15,7 @@ import {
 } from '../services/api'
 
 const ranges = ['Daily', 'Weekly', 'Monthly', 'Custom']
+const PRESET_BY_RANGE = { Daily: 'today', Weekly: 'week', Monthly: 'month' }
 
 export default function Reports() {
   const [range, setRange] = useState('Weekly')
@@ -22,14 +24,35 @@ export default function Reports() {
   const [purchases, setPurchases] = useState([])
   const [bestSellers, setBestSellers] = useState([])
   const [products, setProducts] = useState([])
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+
+  // Resolves the active tab (or custom picker) into real from/to bounds.
+  // Custom builds full local-day ISO instants the same safe way History.jsx
+  // does — see the note there and in utils/dateRanges.js — rather than
+  // sending bare "YYYY-MM-DD" strings.
+  const { from, to } = useMemo(() => {
+    if (range === 'Custom') {
+      return {
+        from: customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : null,
+        to: customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : null,
+      }
+    }
+    return getPresetRange(PRESET_BY_RANGE[range])
+  }, [range, customFrom, customTo])
 
   useEffect(() => {
-    getSalesTrend().then(setTrend)
-    getDashboardStats().then(setStats)
-    getPurchases().then(setPurchases)
-    getBestSellers().then(setBestSellers)
+    // Custom range with either date not yet picked: wait rather than firing
+    // requests with a one-sided/open range.
+    if (range === 'Custom' && (!from || !to)) return
+
+    getSalesTrend({ from, to }).then(setTrend)
+    getDashboardStats({ from, to }).then(setStats)
+    getPurchases({ from, to, limit: 200 }).then(setPurchases)
+    getBestSellers({ from, to }).then(setBestSellers)
+  }, [range, from, to])
+
+  useEffect(() => {
     getProducts().then(setProducts)
   }, [])
 
@@ -56,9 +79,9 @@ export default function Reports() {
 
       {range === 'Custom' && (
         <Card className="mb-4 flex items-center gap-3">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input figures" />
+          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="input figures" />
           <span className="text-ledger text-sm">to</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input figures" />
+          <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="input figures" />
         </Card>
       )}
 
@@ -79,7 +102,7 @@ export default function Reports() {
       </Card>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <ReportCard icon="🧾" title="Sales report" value={stats ? formatINR(stats.monthlySales) : '—'} sub={`${stats?.totalOrders ?? '—'} orders`} />
+        <ReportCard icon="🧾" title="Sales report" value={stats ? formatINR(stats.rangeRevenue) : '—'} sub={`${stats?.rangeOrders ?? '—'} orders`} />
         <ReportCard icon="💰" title="Revenue report" value={stats ? formatINR(stats.totalRevenue) : '—'} sub="all time" />
         <ReportCard icon="📦" title="Purchase history" value={purchases.length} sub="purchase bills" />
         <ReportCard icon="🗃️" title="Stock report" value={lowStockCount} sub="low stock items" />

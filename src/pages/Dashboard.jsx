@@ -6,12 +6,14 @@ import {
   PiShoppingCartDuotone,
   PiPackageDuotone,
   PiTrendUpDuotone,
+  PiTrendDownDuotone,
   PiWarningCircleDuotone,
 } from 'react-icons/pi'
 import TopBar from '../components/nav/TopBar'
 import Card from '../components/ui/Card'
 import StatCard from '../components/ui/StatCard'
 import Badge from '../components/ui/Badge'
+import ProductAvatar from '../components/ui/ProductAvatar'
 import { formatINR } from '../utils/currency'
 import {
   getDashboardStats,
@@ -20,6 +22,13 @@ import {
   getRecentSales,
   getProducts,
 } from '../services/api'
+
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
@@ -38,9 +47,17 @@ export default function Dashboard() {
     )
   }, [])
 
+  // No previous-week sales to compare against (e.g. a shop still in its
+  // first week) means a % change isn't a meaningful number — show nothing
+  // rather than a misleading 0%/∞% badge.
+  const weekChangePct =
+    stats && stats.previousWeekSales > 0
+      ? Math.round(((stats.weekSales - stats.previousWeekSales) / stats.previousWeekSales) * 100)
+      : null
+
   return (
     <div className="px-4">
-      <TopBar title="Good evening" subtitle="Ayini Home Products" />
+      <TopBar title={getGreeting()} subtitle="Ayini Home Products" />
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <StatCard
@@ -68,9 +85,18 @@ export default function Dashboard() {
       <Card className="mb-3">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-medium text-ledger">This week</span>
-          <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
-            <PiTrendUpDuotone /> +12% vs last week
-          </span>
+          {weekChangePct !== null && (
+            <span
+              className={
+                'flex items-center gap-1 text-xs font-medium ' +
+                (weekChangePct >= 0 ? 'text-emerald-700' : 'text-chili-600')
+              }
+            >
+              {weekChangePct >= 0 ? <PiTrendUpDuotone /> : <PiTrendDownDuotone />}
+              {weekChangePct >= 0 ? '+' : ''}
+              {weekChangePct}% vs last week
+            </span>
+          )}
         </div>
         <div className="h-32 -mx-2">
           <ResponsiveContainer width="100%" height="100%">
@@ -117,7 +143,10 @@ export default function Dashboard() {
           <div className="space-y-2">
             {lowStock.slice(0, 4).map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
-                <span className="text-ink">{p.emoji} {p.name}</span>
+                <span className="flex items-center gap-2 min-w-0 text-ink">
+                  <ProductAvatar product={p} className="w-6 h-6 text-xs" rounded="rounded-md" />
+                  <span className="truncate">{p.name}</span>
+                </span>
                 <Badge variant={p.stock === 0 ? 'danger' : 'warning'}>
                   {p.stock === 0 ? 'Out of stock' : `${p.stock} left`}
                 </Badge>

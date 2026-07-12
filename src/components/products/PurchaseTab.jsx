@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { PiMagnifyingGlassBold, PiPlusBold, PiTrashSimpleBold, PiDownloadSimpleBold } from 'react-icons/pi'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
+import ProductAvatar from '../ui/ProductAvatar'
 import ProductFormModal from './ProductFormModal'
 import PurchaseDetailSheet from './PurchaseDetailSheet'
 import {
@@ -201,7 +202,10 @@ export default function PurchaseTab() {
                     onClick={() => addLine(p)}
                     className="w-full text-left px-3.5 py-2.5 text-sm flex items-center justify-between"
                   >
-                    <span>{p.emoji} {p.name}</span>
+                    <span className="flex items-center gap-2 min-w-0">
+                      <ProductAvatar product={p} className="w-6 h-6 text-xs" rounded="rounded-md" />
+                      <span className="truncate">{p.name}</span>
+                    </span>
                     <span className="text-ledger figures">{p.stock} in stock</span>
                   </button>
                 ))}

@@ -65,9 +65,6 @@ export default function Login() {
           {submitting ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
-      <p className="text-center text-xs text-ledger mt-6">
-        Connects to the Express + PostgreSQL API once it's deployed.
-      </p>
     </div>
   )
 }

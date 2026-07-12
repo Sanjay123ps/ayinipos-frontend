@@ -1,7 +1,16 @@
-import { Link } from 'react-router-dom'
-import { PiClockCounterClockwiseDuotone, PiCreditCardDuotone, PiGearDuotone, PiLockKeyDuotone, PiCaretRightBold } from 'react-icons/pi'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  PiClockCounterClockwiseDuotone,
+  PiCreditCardDuotone,
+  PiGearDuotone,
+  PiLockKeyDuotone,
+  PiCaretRightBold,
+  PiSignOutBold,
+  PiCashRegisterDuotone,
+} from 'react-icons/pi'
 import TopBar from '../components/nav/TopBar'
 import Card from '../components/ui/Card'
+import { useAuth } from '../context/AuthContext'
 
 const links = [
   {
@@ -15,6 +24,12 @@ const links = [
     label: 'Credit Bills',
     sub: 'Pending & paid credit sales',
     icon: PiCreditCardDuotone,
+  },
+  {
+    to: '/sessions',
+    label: 'Sessions',
+    sub: 'Open & close the till, count cash',
+    icon: PiCashRegisterDuotone,
   },
   {
     to: '/settings',
@@ -31,6 +46,14 @@ const links = [
 ]
 
 export default function More() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <div className="px-4">
       <TopBar title="More" subtitle="History, credit & settings" />
@@ -50,6 +73,20 @@ export default function More() {
             </Card>
           </Link>
         ))}
+
+        <button onClick={handleLogout} className="w-full text-left">
+          <Card className="flex items-center gap-4">
+            <span className="w-11 h-11 rounded-xl bg-chili-50 flex items-center justify-center text-chili-600 shrink-0">
+              <PiSignOutBold size={20} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-ink">Log out</p>
+              <p className="text-xs text-ledger mt-0.5">
+                {user?.username ? `Signed in as ${user.username}` : 'End your current session'}
+              </p>
+            </div>
+          </Card>
+        </button>
       </div>
     </div>
   )

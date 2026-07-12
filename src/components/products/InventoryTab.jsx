@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { PiMinusBold, PiPlusBold } from 'react-icons/pi'
 import Card from '../ui/Card'
 import Badge from '../ui/Badge'
+import ProductAvatar from '../ui/ProductAvatar'
 import { getProducts, adjustStock } from '../../services/api'
 
 export default function InventoryTab() {
@@ -45,9 +46,7 @@ export default function InventoryTab() {
           const status = p.stock === 0 ? 'danger' : p.stock <= p.lowStockLimit ? 'warning' : 'success'
           return (
             <Card key={p.id} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-lg shrink-0">
-                {p.emoji}
-              </div>
+              <ProductAvatar product={p} className="w-10 h-10 text-lg" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-ink truncate">{p.name}</p>
                 <Badge variant={status} className="mt-1">{p.stock} in stock</Badge>

@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import ProductAvatar from '../ui/ProductAvatar'
 import { formatINR } from '../../utils/currency'
 
 export default function ProductTile({ product, onSelect }) {
@@ -14,9 +15,7 @@ export default function ProductTile({ product, onSelect }) {
         outOfStock && 'opacity-50'
       )}
     >
-      <div className="w-full aspect-square rounded-xl bg-emerald-50 flex items-center justify-center text-3xl">
-        {product.emoji}
-      </div>
+      <ProductAvatar product={product} className="w-full aspect-square text-3xl" />
       <p className="text-sm font-medium text-ink leading-snug line-clamp-2">{product.name}</p>
       <div className="flex items-center justify-between">
         <span className="font-display text-sm text-ink figures">{formatINR(product.price)}</span>

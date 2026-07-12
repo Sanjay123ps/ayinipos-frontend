@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { PiMinusBold, PiPlusBold, PiTrashSimpleBold, PiXBold } from 'react-icons/pi'
 import { useCart } from '../../context/CartContext'
 import Button from '../ui/Button'
+import ProductAvatar from '../ui/ProductAvatar'
 import { formatINR } from '../../utils/currency'
 import { searchCustomers } from '../../services/api'
 
@@ -68,9 +69,7 @@ export default function CartDrawer({ open, onClose, paymentMode, onPaymentMode, 
           )}
           {items.map((item) => (
             <div key={item.id} className="bg-white rounded-2xl shadow-soft p-3 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-xl shrink-0">
-                {item.emoji}
-              </div>
+              <ProductAvatar product={item} className="w-11 h-11 text-xl" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-ink truncate">{item.name}</p>
                 <p className="text-xs text-ledger figures">{formatINR(item.price)} each</p>
@@ -84,8 +83,9 @@ export default function CartDrawer({ open, onClose, paymentMode, onPaymentMode, 
                 </button>
                 <span className="text-sm w-5 text-center figures">{item.qty}</span>
                 <button
-                  onClick={() => updateQty(item.id, item.qty + 1)}
-                  className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center"
+                  onClick={() => updateQty(item.id, Math.min(item.stock, item.qty + 1))}
+                  disabled={item.qty >= item.stock}
+                  className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <PiPlusBold size={12} />
                 </button>

@@ -1,397 +1,290 @@
 import axios from 'axios'
-import * as mock from './mockData'
-import { loadPersisted, savePersisted } from './persist'
 
-// Once the Express/PostgreSQL backend is live, point this at it via an env
-// var (e.g. import.meta.env.VITE_API_URL) and remove the mock fallbacks below.
+// Points at the real Express/PostgreSQL backend. Set VITE_API_URL in a
+// .env file for whichever environment this is running in (see .env.example
+// in this project's root) — e.g. http://localhost:4000/api for a backend
+// running locally, or your deployed Railway URL + /api in production. Falls
+// back to same-origin '/api', which only works if something (a dev proxy,
+// or the backend and frontend being served from the same host) routes it
+// through.
+const baseURL = import.meta.env.VITE_API_URL || '/api'
+
 export const http = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
+  baseURL,
+  timeout: 15000,
 })
 
-const delay = (ms = 250) => new Promise((res) => setTimeout(res, ms))
+// ---- Auth token handling --------------------------------------------------
+// The only thing this app keeps in localStorage now is the JWT itself — not
+// products, bills, or any other business data, all of which live in
+// Postgres and are fetched fresh from the API on every request. A token is
+// the standard way to persist a login across page reloads without forcing a
+// re-login every time; if you'd rather it not survive a browser restart,
+// swap TOKEN_KEY's storage for sessionStorage instead of localStorage below.
+const TOKEN_KEY = 'ayini-pos-v2:token'
 
-// Persists a mock collection back to localStorage after every mutation, so
-// bills/purchases/products/customers created in the UI survive a reload
-// instead of only living in memory for the current tab session.
-function persist(key, value) {
-  savePersisted(key, value)
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-// ---- Dashboard -----------------------------------------------------------
-// TODO: GET /api/dashboard/summary
-export async function getDashboardStats() {
-  await delay()
-  return mock.dashboardStats
+export function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token)
+  else localStorage.removeItem(TOKEN_KEY)
 }
 
-// TODO: GET /api/reports/daily?days=7
-export async function getSalesTrend() {
-  await delay()
-  return mock.salesTrend
+http.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// A 401 means the token is missing/expired/invalid — clear it and bounce to
+// login rather than leaving the app stuck showing failed requests. For every
+// error, also replace axios's generic "Request failed with status code 4xx"
+// with the backend's actual { error: "..." } message, since every existing
+// catch (err) { ... err.message ... } block across this app (toasts, form
+// errors, Login's error banner) already expects a human-readable message,
+// not an HTTP status line.
+http.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      setToken(null)
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login')
+      }
+    }
+    const message = err.response?.data?.error || err.message
+    return Promise.reject(new Error(message))
+  }
+)
+
+// Postgres NUMERIC/DECIMAL columns come back from `pg` as strings (to avoid
+// silent float rounding), and a couple of model functions pass raw DB rows
+// through without renaming snake_case columns to camelCase. Rather than
+// trust each endpoint's shape from memory, these helpers explicitly build
+// the exact object shape every page already expects, reading whichever raw
+// field is actually present.
+function normalizeBillSummary(b) {
+  return {
+    id: b.id,
+    createdAt: b.createdAt ?? b.created_at,
+    customerName: b.customerName ?? b.customer_name,
+    customerMobile: b.customerMobile ?? b.customer_mobile,
+    paymentMode: b.paymentMode ?? b.payment_mode,
+    creditStatus: b.creditStatus ?? b.credit_status,
+    creditClosedMode: b.creditClosedMode ?? b.credit_closed_mode ?? null,
+    creditClosedAt: b.creditClosedAt ?? b.credit_closed_at ?? null,
+    items: b.items,
+    total: Number(b.total),
+  }
 }
 
-// TODO: GET /api/reports/top-products
-export async function getBestSellers() {
-  await delay()
-  return mock.bestSellers
+function normalizeBillDetail(b) {
+  return {
+    ...normalizeBillSummary(b),
+    subtotal: Number(b.subtotal),
+    gstAmount: Number(b.gstAmount ?? b.gst_amount),
+    discountAmount: Number(b.discountAmount ?? b.discount_amount),
+    discountPercent: Number(b.discountPercent ?? b.discount_percent ?? 0),
+    items: (b.items || []).map((i) => ({
+      name: i.name,
+      price: Number(i.price),
+      gst: Number(i.gst),
+      qty: i.qty,
+      lineTotal: Number(i.lineTotal ?? i.line_total ?? i.price * i.qty),
+    })),
+  }
 }
 
-// TODO: GET /api/bills?limit=5&sort=desc
-export async function getRecentSales() {
-  await delay()
-  return mock.recentSales
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
-// ---- Products -------------------------------------------------------------
-// TODO: GET /api/products
+// ---- Auth ------------------------------------------------------------------
+export async function login(username, password) {
+  const { data } = await http.post('/auth/login', { username, password })
+  setToken(data.token)
+  return data.user
+}
+
+export function logout() {
+  setToken(null)
+}
+
+export async function changePassword({ currentPassword, newPassword }) {
+  const { data } = await http.post('/auth/change-password', { currentPassword, newPassword })
+  return data
+}
+
+// ---- Dashboard -------------------------------------------------------------
+export async function getDashboardStats({ from, to } = {}) {
+  const { data } = await http.get('/dashboard/summary', { params: { from, to } })
+  return data
+}
+
+export async function getSalesTrend({ from, to } = {}) {
+  const { data } = await http.get('/dashboard/sales-trend', { params: { from, to } })
+  return data
+}
+
+export async function getBestSellers({ limit, from, to } = {}) {
+  const { data } = await http.get('/dashboard/best-sellers', { params: { limit, from, to } })
+  return data
+}
+
+export async function getRecentSales(limit) {
+  const { data } = await http.get('/dashboard/recent-sales', { params: { limit } })
+  return data
+}
+
+// ---- Products ----------------------------------------------------------
 export async function getProducts() {
-  await delay()
-  return mock.products
+  const { data } = await http.get('/products')
+  return data
 }
 
 export async function getCategories() {
-  await delay(80)
-  return mock.categories
+  const { data } = await http.get('/products/categories')
+  return data
 }
 
-// TODO: POST /api/products
 export async function createProduct(payload) {
-  await delay()
-  const newProduct = { id: `P${Math.floor(Math.random() * 9000) + 100}`, stock: 0, ...payload }
-  mock.products.push(newProduct)
-  persist('products', mock.products)
-  return newProduct
+  const { data } = await http.post('/products', payload)
+  return data
 }
 
-// TODO: PUT /api/products/:id
 export async function updateProduct(id, payload) {
-  await delay()
-  const idx = mock.products.findIndex((p) => p.id === id)
-  if (idx > -1) mock.products[idx] = { ...mock.products[idx], ...payload }
-  persist('products', mock.products)
-  return mock.products[idx]
+  const { data } = await http.put(`/products/${id}`, payload)
+  return data
 }
 
-// TODO: DELETE /api/products/:id
 export async function deleteProduct(id) {
-  await delay()
-  const idx = mock.products.findIndex((p) => p.id === id)
-  if (idx > -1) mock.products.splice(idx, 1)
-  persist('products', mock.products)
-  return true
+  await http.delete(`/products/${id}`)
+  return { id, deleted: true }
 }
 
-// ---- Billing / POS ---------------------------------------------------------
-// TODO: POST /api/bills  { items, discountPercent, customerMobile, customerName, paymentMode }
+export async function adjustStock(id, delta, reason) {
+  const { data } = await http.patch(`/products/${id}/stock`, { delta, reason })
+  return data
+}
+
+export async function getStockHistory(id) {
+  const { data } = await http.get(`/products/${id}/stock-history`)
+  return data
+}
+
+// ---- Billing / POS ----------------------------------------------------
 export async function createBill(payload) {
-  await delay(400)
-  // naive stock deduction against the in-memory mock catalog
-  payload.items.forEach((line) => {
-    const product = mock.products.find((p) => p.id === line.id)
-    if (product) product.stock = Math.max(0, product.stock - line.qty)
-  })
-  persist('products', mock.products)
-
-  // Capture the customer (if a mobile number was given) so it shows up in
-  // autofill next time — mirrors findOrCreateCustomer on the real backend.
-  if (payload.customerMobile) {
-    const existing = mock.customers.find((c) => c.mobile === payload.customerMobile)
-    if (existing) {
-      if (payload.customerName) existing.name = payload.customerName
-    } else {
-      mock.customers.push({
-        id: `C${Math.floor(Math.random() * 9000) + 100}`,
-        name: payload.customerName || '',
-        mobile: payload.customerMobile,
-        address: '',
-      })
-    }
-    persist('customers', mock.customers)
-  }
-
-  const bill = {
-    id: `BILL-${Math.floor(Math.random() * 9000) + 1000}`,
-    createdAt: new Date().toISOString(),
-    creditStatus: payload.paymentMode === 'Credit' ? 'pending' : 'none',
-    ...payload,
-  }
-  mock.bills.unshift({
-    ...bill,
-    subtotal: payload.totals?.subtotal ?? 0,
-    gstAmount: payload.totals?.gstAmount ?? 0,
-    discountAmount: payload.totals?.discountAmount ?? 0,
-    total: payload.totals?.total ?? 0,
-  })
-  persist('bills', mock.bills)
-  return bill
+  const { data } = await http.post('/bills', payload)
+  return data
 }
 
-// ---- Customers --------------------------------------------------------
-// TODO: GET /api/customers/search?mobile=
+// ---- Customers ----------------------------------------------------------
 export async function searchCustomers(mobilePrefix) {
-  await delay(120)
-  if (!mobilePrefix) return []
-  return mock.customers.filter((c) => c.mobile.startsWith(mobilePrefix)).slice(0, 8)
+  const { data } = await http.get('/customers/search', { params: { mobile: mobilePrefix } })
+  return data
 }
 
-// ---- History (bills) ---------------------------------------------------
-// TODO: GET /api/bills?from=&to=&q=&page=&limit=
+// ---- History / Bills --------------------------------------------------
 export async function getBills({ from, to, q, page = 1, limit = 25 } = {}) {
-  await delay()
-  let filtered = mock.bills
-  if (from) filtered = filtered.filter((b) => b.createdAt >= from)
-  if (to) filtered = filtered.filter((b) => b.createdAt < `${to}T23:59:59.999Z`)
-  if (q) {
-    const needle = q.toLowerCase()
-    filtered = filtered.filter(
-      (b) =>
-        b.id.toLowerCase().includes(needle) ||
-        (b.customerMobile || '').includes(needle) ||
-        (b.customerName || '').toLowerCase().includes(needle)
-    )
-  }
-  filtered = [...filtered].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  const start = (page - 1) * limit
-  return {
-    bills: filtered.slice(start, start + limit).map((b) => ({ ...b, items: b.items.length })),
-    total: filtered.length,
-    page,
-    limit,
-  }
+  const { data } = await http.get('/bills', { params: { from, to, q, page, limit } })
+  return { bills: (data.bills || []).map(normalizeBillSummary), total: data.total }
 }
 
-// TODO: GET /api/bills/:billNo
 export async function getBill(billNo) {
-  await delay(150)
-  return mock.bills.find((b) => b.id === billNo)
+  const { data } = await http.get(`/bills/${billNo}`)
+  return normalizeBillDetail(data)
 }
 
-// TODO: DELETE /api/bills/:billNo
 export async function deleteBill(billNo) {
-  await delay(300)
-  const idx = mock.bills.findIndex((b) => b.id === billNo)
-  if (idx > -1) {
-    const [removed] = mock.bills.splice(idx, 1)
-    // Restore the stock the bill had deducted, mirroring the real backend.
-    removed.items.forEach((line) => {
-      const product = mock.products.find((p) => p.name === line.name)
-      if (product) product.stock += line.qty
-    })
-    persist('products', mock.products)
-    persist('bills', mock.bills)
-  }
+  await http.delete(`/bills/${billNo}`)
   return { id: billNo, deleted: true }
 }
 
-// TODO: GET /api/bills/export?from=&to=&q=  (downloads a CSV from the server)
+export async function bulkDeleteBills(billNumbers) {
+  const { data } = await http.post('/bills/bulk-delete', { billNumbers })
+  return data
+}
+
 export async function exportBills({ from, to, q } = {}) {
-  const { bills } = await getBills({ from, to, q, page: 1, limit: 10000 })
-  const header = ['Bill No', 'Date', 'Customer Name', 'Customer Mobile', 'Payment Mode', 'Credit Status', 'Items', 'Total']
-  const rows = bills.map((b) =>
-    [b.id, b.createdAt, b.customerName || '', b.customerMobile || '', b.paymentMode, b.creditStatus, b.items, b.total]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      .join(',')
-  )
-  const csv = [header.join(','), ...rows].join('\r\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `bills-${Date.now()}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  const res = await http.get('/bills/export', { params: { from, to, q }, responseType: 'blob' })
+  downloadBlob(res.data, `bills-${Date.now()}.csv`)
 }
 
-// ---- Credit Bills -------------------------------------------------------
-// TODO: GET /api/bills/credit?status=pending|paid
+// ---- Credit bills -------------------------------------------------------
 export async function getCreditBills(status) {
-  await delay()
-  return mock.bills
-    .filter((b) => b.creditStatus !== 'none' && (!status || b.creditStatus === status))
-    .map((b) => ({ ...b, items: b.items.length }))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  const { data } = await http.get('/bills/credit', { params: { status } })
+  return data.map(normalizeBillSummary)
 }
 
-// TODO: PATCH /api/bills/credit/:billNo/close  { closedMode }
 export async function closeCreditBill(billNo, closedMode) {
-  await delay(300)
-  const bill = mock.bills.find((b) => b.id === billNo)
-  if (bill) {
-    bill.creditStatus = 'paid'
-    bill.creditClosedMode = closedMode
-    bill.creditClosedAt = new Date().toISOString()
-    persist('bills', mock.bills)
-  }
-  return bill
+  const { data } = await http.patch(`/bills/credit/${billNo}/close`, { closedMode })
+  return normalizeBillSummary(data)
 }
 
-// ---- Purchases --------------------------------------------------------
-// TODO: GET /api/purchases
-export async function getPurchases() {
-  await delay()
-  return mock.purchases.map((p) => ({ ...p, items: p.items.length }))
+// ---- Purchases ------------------------------------------------------------
+export async function getPurchases({ from, to, limit } = {}) {
+  const { data } = await http.get('/purchases', { params: { from, to, limit } })
+  return data.map((p) => ({ ...p, items: Array.isArray(p.items) ? p.items.length : p.items }))
 }
 
 export async function getSuppliers() {
-  await delay(80)
-  return mock.suppliers
+  const { data } = await http.get('/purchases/suppliers')
+  return data
 }
 
-// Purchases only ever move stock. purchasePrice is never collected from
-// the user, stored on the purchase record, or used in any calculation.
-function buildPurchaseLines(items) {
-  const lines = items.map((item) => ({
-    productId: item.productId,
-    productName: item.productName,
-    unit: item.unit || 'pcs',
-    quantity: Number(item.quantity),
-  }))
-  return { lines, totalQuantity: lines.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0) }
-}
-
-// Applies a multi-product purchase's stock effect against the mock
-// catalog, or reverses it (sign = -1) when editing/deleting.
-function applyPurchaseToCatalog(items, sign = 1) {
-  items.forEach((line) => {
-    const product = mock.products.find((p) => p.id === line.productId)
-    if (!product) return
-    product.stock = Math.max(0, product.stock + sign * Number(line.quantity))
-  })
-  persist('products', mock.products)
-}
-
-// TODO: POST /api/purchases  { supplier, invoiceNo, date, items: [{productId, productName, unit, quantity}] }
 export async function createPurchase({ supplier, invoiceNo, date, items }) {
-  await delay(400)
-  if (!items || items.length === 0) {
-    throw new Error('A purchase bill needs at least one product')
-  }
-  const { lines, totalQuantity } = buildPurchaseLines(items)
-
-  applyPurchaseToCatalog(lines, 1)
-
-  const record = {
-    id: `PUR-${Math.floor(Math.random() * 9000) + 1000}`,
-    supplier,
-    invoiceNo,
-    date: date || new Date().toISOString().slice(0, 10),
-    items: lines,
-    totalQuantity,
-  }
-  mock.purchases.unshift(record)
-  persist('purchases', mock.purchases)
-  return { ...record, items: lines.length }
+  const { data } = await http.post('/purchases', { supplier, invoiceNo, date, items })
+  return { ...data, items: Array.isArray(data.items) ? data.items.length : data.items }
 }
 
-// TODO: GET /api/purchases/:billNo
 export async function getPurchase(billNo) {
-  await delay(150)
-  return mock.purchases.find((p) => p.id === billNo)
+  const { data } = await http.get(`/purchases/${billNo}`)
+  return data
 }
 
-// TODO: PUT /api/purchases/:billNo
 export async function updatePurchase(billNo, { supplier, invoiceNo, date, items }) {
-  await delay(400)
-  const idx = mock.purchases.findIndex((p) => p.id === billNo)
-  if (idx === -1) throw new Error('Purchase not found')
-
-  // Reverse the old line items' effect on stock before applying the new ones.
-  applyPurchaseToCatalog(mock.purchases[idx].items, -1)
-
-  const { lines, totalQuantity } = buildPurchaseLines(items)
-  applyPurchaseToCatalog(lines, 1)
-
-  mock.purchases[idx] = { ...mock.purchases[idx], supplier, invoiceNo, date, items: lines, totalQuantity }
-  persist('purchases', mock.purchases)
-  return { ...mock.purchases[idx], items: lines.length }
+  const { data } = await http.put(`/purchases/${billNo}`, { supplier, invoiceNo, date, items })
+  return { ...data, items: Array.isArray(data.items) ? data.items.length : data.items }
 }
 
-// TODO: DELETE /api/purchases/:billNo
 export async function deletePurchase(billNo) {
-  await delay(300)
-  const idx = mock.purchases.findIndex((p) => p.id === billNo)
-  if (idx > -1) {
-    const [removed] = mock.purchases.splice(idx, 1)
-    applyPurchaseToCatalog(removed.items, -1)
-    persist('purchases', mock.purchases)
-  }
+  await http.delete(`/purchases/${billNo}`)
   return { id: billNo, deleted: true }
 }
 
-// TODO: GET /api/purchases/export
 export async function exportPurchases() {
-  const header = ['Purchase No', 'Date', 'Supplier', 'Invoice No', 'Items', 'Total Quantity']
-  const rows = mock.purchases.map((p) =>
-    [p.id, p.date, p.supplier, p.invoiceNo || '', p.items.length, p.totalQuantity]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      .join(',')
-  )
-  const csv = [header.join(','), ...rows].join('\r\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `purchases-${Date.now()}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
-// ---- Inventory --------------------------------------------------------
-// TODO: PATCH /api/products/:id/stock
-export async function adjustStock(id, delta, reason) {
-  await delay()
-  const product = mock.products.find((p) => p.id === id)
-  if (product) product.stock = Math.max(0, product.stock + delta)
-  persist('products', mock.products)
-  return product
+  const res = await http.get('/purchases/export', { responseType: 'blob' })
+  downloadBlob(res.data, `purchases-${Date.now()}.csv`)
 }
 
 // ---- Sessions (till / cash counting) --------------------------------------
-// TODO: GET /api/sessions
 export async function getSessions() {
-  await delay()
-  return mock.sessions
+  const { data } = await http.get('/sessions')
+  return data
 }
 
-// TODO: POST /api/sessions
 export async function closeSession(payload) {
-  await delay(400)
-  const record = { id: `SES-${Math.floor(Math.random() * 900) + 100}`, ...payload }
-  mock.sessions.unshift(record)
-  persist('sessions', mock.sessions)
-  return record
+  const { data } = await http.post('/sessions', {
+    ...payload,
+    openingTimeISO: new Date().toISOString(),
+  })
+  return data
 }
 
-// ---- Settings --------------------------------------------------------------
-// TODO: GET /api/settings
+// ---- Settings ---------------------------------------------------------
 export async function getSettings() {
-  await delay(150)
-  return mock.storeSettings
+  const { data } = await http.get('/settings')
+  return data
 }
 
-// TODO: PUT /api/settings
 export async function saveSettings(payload) {
-  await delay(300)
-  Object.assign(mock.storeSettings, payload)
-  persist('settings', mock.storeSettings)
-  return mock.storeSettings
-}
-
-// ---- Auth --------------------------------------------------------------
-// TODO: POST /api/auth/change-password  { currentPassword, newPassword }
-export async function changePassword({ currentPassword, newPassword }) {
-  await delay(400)
-  if (!currentPassword || !newPassword) {
-    throw new Error('Current and new password are required')
-  }
-  if (newPassword.length < 6) {
-    throw new Error('New password must be at least 6 characters')
-  }
-  const storedPassword = loadPersisted('mockPassword', 'admin123')
-  if (currentPassword !== storedPassword) {
-    throw new Error('Current password is incorrect')
-  }
-  persist('mockPassword', newPassword)
-  return { success: true }
+  const { data } = await http.put('/settings', payload)
+  return data
 }

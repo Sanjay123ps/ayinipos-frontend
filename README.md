@@ -44,12 +44,22 @@ mocked until the backend ships).
   `.perforated-bottom` in `src/index.css`) used on the floating cart bar and
   bill receipt
 
-## Next steps (backend)
+## Deploying
 
-1. Build the Express + PostgreSQL API per the schema in the master prompt
-   (users, products, purchases, purchase_items, sales, sale_items, inventory,
-   suppliers, sessions, settings).
-2. Replace each function body in `src/services/api.js` with a real `http.get/
-   post/put/delete` call — the function signatures already match what every
-   page expects.
-3. Wire real JWT auth into `AuthContext`.
+This now talks to the real Express + PostgreSQL backend (see the backend
+repo's README for deploying that side first) — nothing here runs on mock
+data or localStorage for business data anymore. The JWT login token is the
+one thing still kept in localStorage (see the comment in `services/api.js`
+if you want to swap that for sessionStorage instead).
+
+1. Copy `.env.example` to `.env.local` for local dev, or set `VITE_API_URL`
+   in your host's environment variable settings for a deployed build (it's
+   compiled in at build time, not read at runtime).
+2. `npm run build` → deploy the `dist/` folder to any static host (Vercel,
+   Netlify, Railway static site, GitHub Pages, etc).
+3. Make sure the backend's `CORS_ORIGIN` env var matches this site's exact
+   deployed URL, or requests will be blocked by the browser.
+4. Log in with the admin credentials from the backend's `npm run db:seed`
+   output (default `admin` / `admin123` unless you set
+   `SEED_ADMIN_USERNAME`/`SEED_ADMIN_PASSWORD` before seeding) — change the
+   password from Settings → Change Password once you're in.

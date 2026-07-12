@@ -65,13 +65,13 @@ export default function Settings() {
 
           <div>
             <label className="text-xs font-medium text-ledger mb-1.5 block">GST number</label>
-            <input value={form.gstNumber} onChange={(e) => update('gstNumber', e.target.value)} className="input figures" />
+            <input value={form.gstNumber || ''} onChange={(e) => update('gstNumber', e.target.value)} className="input figures" />
           </div>
 
           <div>
             <label className="text-xs font-medium text-ledger mb-1.5 block">Address</label>
             <textarea
-              value={form.address}
+              value={form.address || ''}
               onChange={(e) => update('address', e.target.value)}
               rows={2}
               className="input resize-none"
@@ -81,7 +81,7 @@ export default function Settings() {
           <div>
             <label className="text-xs font-medium text-ledger mb-1.5 block">Bill footer</label>
             <textarea
-              value={form.billFooter}
+              value={form.billFooter || ''}
               onChange={(e) => update('billFooter', e.target.value)}
               rows={2}
               className="input resize-none"

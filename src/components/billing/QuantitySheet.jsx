@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PiMinusBold, PiPlusBold, PiXBold } from 'react-icons/pi'
 import Button from '../ui/Button'
+import ProductAvatar from '../ui/ProductAvatar'
 import { formatINR } from '../../utils/currency'
 
 export default function QuantitySheet({ product, onConfirm, onClose }) {
@@ -24,9 +25,7 @@ export default function QuantitySheet({ product, onConfirm, onClose }) {
         </button>
 
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-14 h-14 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl">
-            {product.emoji}
-          </div>
+          <ProductAvatar product={product} className="w-14 h-14 text-2xl" />
           <div>
             <p className="font-medium text-ink">{product.name}</p>
             <p className="text-sm text-ledger figures">{formatINR(product.price)} · GST {product.gst}%</p>

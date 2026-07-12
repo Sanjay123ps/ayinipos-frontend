@@ -1,5 +1,6 @@
 import { PiPencilSimpleBold, PiTrashSimpleBold } from 'react-icons/pi'
 import Badge from '../ui/Badge'
+import ProductAvatar from '../ui/ProductAvatar'
 import { formatINR } from '../../utils/currency'
 
 export default function ProductRow({ product, onEdit, onDelete }) {
@@ -10,9 +11,7 @@ export default function ProductRow({ product, onEdit, onDelete }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-soft p-3 flex items-center gap-3">
-      <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-xl shrink-0">
-        {product.emoji}
-      </div>
+      <ProductAvatar product={product} className="w-11 h-11 text-xl" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-ink truncate">{product.name}</p>
         <p className="text-xs text-ledger">{product.category}</p>
