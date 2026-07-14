@@ -41,7 +41,12 @@ export default function Billing() {
     setGenerating(true)
     try {
       const bill = await createBill({
-        items,
+        // Only id/qty travel over the wire — the server re-reads price,
+        // gst, name, and stock straight from the products table for every
+        // line anyway (see saleModel.js), so shipping the full cart objects
+        // (which can carry a ~30-100KB base64 product photo each) was pure
+        // waste and is what was tripping the body-size limit.
+        items: items.map(({ id, qty }) => ({ id, qty })),
         discountPercent,
         customerMobile,
         customerName,
