@@ -12,6 +12,7 @@ const blankForm = {
   stock: '0',
   lowStockLimit: '10',
   image: '',
+  unit: 'pcs',
 }
 
 export default function ProductFormModal({ open, onClose, onSubmit, categories, initial }) {
@@ -30,6 +31,7 @@ export default function ProductFormModal({ open, onClose, onSubmit, categories, 
         stock: initial.stock,
         lowStockLimit: initial.lowStockLimit,
         image: initial.image || '',
+        unit: initial.unit || 'pcs',
       })
     } else {
       setForm(blankForm)
@@ -63,14 +65,18 @@ export default function ProductFormModal({ open, onClose, onSubmit, categories, 
     }
   }
 
+  const isWeightPriced = form.unit === 'kg'
+
   function handleSubmit(e) {
     e.preventDefault()
     onSubmit({
       ...form,
       price: Number(form.price),
       gst: Number(form.gst),
-      stock: Number(form.stock),
-      lowStockLimit: Number(form.lowStockLimit),
+      stock: isWeightPriced ? 0 : Number(form.stock),
+      lowStockLimit: isWeightPriced ? 0 : Number(form.lowStockLimit),
+      unit: form.unit,
+      trackStock: !isWeightPriced,
     })
   }
 
@@ -152,21 +158,59 @@ export default function ProductFormModal({ open, onClose, onSubmit, categories, 
           <input value={form.barcode} onChange={(e) => update('barcode', e.target.value)} className="input figures" />
         </Field>
 
-        <Field label="Selling price">
+        <Field label="Sold by">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => update('unit', 'pcs')}
+              className={`rounded-xl py-2.5 text-sm font-medium border transition-colors ${
+                form.unit === 'pcs'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-porcelain text-ledger border-mist'
+              }`}
+            >
+              Piece
+            </button>
+            <button
+              type="button"
+              onClick={() => update('unit', 'kg')}
+              className={`rounded-xl py-2.5 text-sm font-medium border transition-colors ${
+                form.unit === 'kg'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-porcelain text-ledger border-mist'
+              }`}
+            >
+              Weight (kg)
+            </button>
+          </div>
+        </Field>
+
+        <Field label={isWeightPriced ? 'Rate per kg' : 'Selling price'}>
           <input type="number" required value={form.price} onChange={(e) => update('price', e.target.value)} className="input figures" />
         </Field>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="GST %">
-            <input type="number" value={form.gst} onChange={(e) => update('gst', e.target.value)} className="input figures" />
-          </Field>
-          <Field label="Stock">
-            <input type="number" value={form.stock} onChange={(e) => update('stock', e.target.value)} className="input figures" />
-          </Field>
-          <Field label="Low stock at">
-            <input type="number" value={form.lowStockLimit} onChange={(e) => update('lowStockLimit', e.target.value)} className="input figures" />
-          </Field>
-        </div>
+        {isWeightPriced ? (
+          <>
+            <Field label="GST %">
+              <input type="number" value={form.gst} onChange={(e) => update('gst', e.target.value)} className="input figures" />
+            </Field>
+            <p className="text-xs text-ledger">
+              Weight-priced items don't track stock — billing will show a weight input instead of a quantity stepper.
+            </p>
+          </>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="GST %">
+              <input type="number" value={form.gst} onChange={(e) => update('gst', e.target.value)} className="input figures" />
+            </Field>
+            <Field label="Stock">
+              <input type="number" value={form.stock} onChange={(e) => update('stock', e.target.value)} className="input figures" />
+            </Field>
+            <Field label="Low stock at">
+              <input type="number" value={form.lowStockLimit} onChange={(e) => update('lowStockLimit', e.target.value)} className="input figures" />
+            </Field>
+          </div>
+        )}
 
         <Button type="submit" full size="lg" className="mt-2">
           {initial ? 'Save changes' : 'Add product'}

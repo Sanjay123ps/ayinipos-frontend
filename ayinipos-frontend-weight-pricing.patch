@@ -1,0 +1,304 @@
+diff -ru orig/ayinipos-frontend-main/src/components/billing/CartDrawer.jsx ayinipos-frontend-main/src/components/billing/CartDrawer.jsx
+--- orig/ayinipos-frontend-main/src/components/billing/CartDrawer.jsx	2026-07-14 11:25:00.000000000 +0000
++++ ayinipos-frontend-main/src/components/billing/CartDrawer.jsx	2026-07-16 08:59:25.386639090 +0000
+@@ -4,7 +4,7 @@
+ import { useCart } from '../../context/CartContext'
+ import Button from '../ui/Button'
+ import ProductAvatar from '../ui/ProductAvatar'
+-import { formatINR } from '../../utils/currency'
++import { formatINR, round2 } from '../../utils/currency'
+ import { searchCustomers } from '../../services/api'
+ 
+ const paymentModes = ['Cash', 'UPI', 'Card', 'Credit']
+@@ -72,19 +72,30 @@
+               <ProductAvatar product={item} className="w-11 h-11 text-xl" />
+               <div className="flex-1 min-w-0">
+                 <p className="text-sm font-medium text-ink truncate">{item.name}</p>
+-                <p className="text-xs text-ledger figures">{formatINR(item.price)} each</p>
++                <p className="text-xs text-ledger figures">
++                  {formatINR(item.price)}{item.unit === 'kg' ? '/kg' : ' each'}
++                </p>
+               </div>
+               <div className="flex items-center gap-2 shrink-0">
+                 <button
+-                  onClick={() => updateQty(item.id, item.qty - 1)}
++                  onClick={() =>
++                    updateQty(item.id, item.unit === 'kg' ? round2(item.qty - 0.25) : item.qty - 1)
++                  }
+                   className="w-7 h-7 rounded-full bg-mist flex items-center justify-center text-ink"
+                 >
+                   <PiMinusBold size={12} />
+                 </button>
+-                <span className="text-sm w-5 text-center figures">{item.qty}</span>
++                <span className="text-sm w-8 text-center figures">
++                  {item.unit === 'kg' ? `${item.qty}kg` : item.qty}
++                </span>
+                 <button
+-                  onClick={() => updateQty(item.id, Math.min(item.stock, item.qty + 1))}
+-                  disabled={item.qty >= item.stock}
++                  onClick={() =>
++                    updateQty(
++                      item.id,
++                      item.unit === 'kg' ? round2(item.qty + 0.25) : Math.min(item.stock, item.qty + 1)
++                    )
++                  }
++                  disabled={item.unit !== 'kg' && item.qty >= item.stock}
+                   className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
+                 >
+                   <PiPlusBold size={12} />
+diff -ru orig/ayinipos-frontend-main/src/components/billing/ProductTile.jsx ayinipos-frontend-main/src/components/billing/ProductTile.jsx
+--- orig/ayinipos-frontend-main/src/components/billing/ProductTile.jsx	2026-07-14 11:25:00.000000000 +0000
++++ ayinipos-frontend-main/src/components/billing/ProductTile.jsx	2026-07-16 08:58:42.869342545 +0000
+@@ -3,8 +3,8 @@
+ import { formatINR } from '../../utils/currency'
+ 
+ export default function ProductTile({ product, onSelect }) {
+-  const outOfStock = product.stock <= 0
+-  const low = !outOfStock && product.stock <= product.lowStockLimit
++  const outOfStock = product.trackStock !== false && product.stock <= 0
++  const low = product.trackStock !== false && !outOfStock && product.stock <= product.lowStockLimit
+ 
+   return (
+     <button
+@@ -18,7 +18,10 @@
+       <ProductAvatar product={product} className="w-full aspect-square text-3xl" />
+       <p className="text-sm font-medium text-ink leading-snug line-clamp-2">{product.name}</p>
+       <div className="flex items-center justify-between">
+-        <span className="font-display text-sm text-ink figures">{formatINR(product.price)}</span>
++        <span className="font-display text-sm text-ink figures">
++          {formatINR(product.price)}
++          {product.unit === 'kg' && <span className="text-ledger text-xs">/kg</span>}
++        </span>
+         {outOfStock ? (
+           <span className="text-[10px] font-medium text-chili-600">Out of stock</span>
+         ) : low ? (
+diff -ru orig/ayinipos-frontend-main/src/components/billing/QuantitySheet.jsx ayinipos-frontend-main/src/components/billing/QuantitySheet.jsx
+--- orig/ayinipos-frontend-main/src/components/billing/QuantitySheet.jsx	2026-07-14 11:25:00.000000000 +0000
++++ ayinipos-frontend-main/src/components/billing/QuantitySheet.jsx	2026-07-16 08:59:14.722054049 +0000
+@@ -2,17 +2,24 @@
+ import { PiMinusBold, PiPlusBold, PiXBold } from 'react-icons/pi'
+ import Button from '../ui/Button'
+ import ProductAvatar from '../ui/ProductAvatar'
+-import { formatINR } from '../../utils/currency'
++import { formatINR, round2 } from '../../utils/currency'
+ 
+ export default function QuantitySheet({ product, onConfirm, onClose }) {
++  const isWeightPriced = product?.unit === 'kg'
+   const [qty, setQty] = useState(1)
++  const [weightInput, setWeightInput] = useState('')
+ 
+   useEffect(() => {
+     setQty(1)
++    setWeightInput('')
+   }, [product])
+ 
+   if (!product) return null
+ 
++  const weight = Number(weightInput) || 0
++  const amount = isWeightPriced ? product.price * weight : product.price * qty
++  const canConfirm = isWeightPriced ? weight > 0 : true
++
+   return (
+     <div className="fixed inset-0 z-50 flex items-end justify-center">
+       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+@@ -28,35 +35,70 @@
+           <ProductAvatar product={product} className="w-14 h-14 text-2xl" />
+           <div>
+             <p className="font-medium text-ink">{product.name}</p>
+-            <p className="text-sm text-ledger figures">{formatINR(product.price)} · GST {product.gst}%</p>
++            <p className="text-sm text-ledger figures">
++              {formatINR(product.price)}{isWeightPriced && '/kg'} · GST {product.gst}%
++            </p>
+           </div>
+         </div>
+ 
+-        <div className="flex items-center justify-center gap-6 mb-6">
+-          <button
+-            onClick={() => setQty((q) => Math.max(1, q - 1))}
+-            className="w-11 h-11 rounded-full bg-mist flex items-center justify-center text-ink active:scale-95 transition-transform"
+-          >
+-            <PiMinusBold />
+-          </button>
+-          <span className="font-display text-3xl w-12 text-center figures">{qty}</span>
+-          <button
+-            onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
+-            className="w-11 h-11 rounded-full bg-emerald-600 text-white flex items-center justify-center active:scale-95 transition-transform"
+-          >
+-            <PiPlusBold />
+-          </button>
+-        </div>
++        {isWeightPriced ? (
++          <div className="mb-6">
++            <label className="text-xs font-medium text-ledger mb-1.5 block">Weight (kg)</label>
++            <div className="relative">
++              <input
++                type="number"
++                inputMode="decimal"
++                step="0.05"
++                min="0"
++                autoFocus
++                value={weightInput}
++                onChange={(e) => setWeightInput(e.target.value)}
++                placeholder="0.00"
++                className="w-full rounded-xl border border-mist bg-porcelain px-3.5 py-3 text-2xl font-display text-center outline-none focus:ring-2 focus:ring-emerald-500/40 figures"
++              />
++              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-ledger">kg</span>
++            </div>
++            <div className="flex items-center justify-center gap-2 mt-3">
++              {[0.25, 0.5, 1].map((preset) => (
++                <button
++                  key={preset}
++                  type="button"
++                  onClick={() => setWeightInput((w) => String(round2((Number(w) || 0) + preset)))}
++                  className="px-3 py-1.5 rounded-full bg-mist text-xs font-medium text-ink"
++                >
++                  +{preset}kg
++                </button>
++              ))}
++            </div>
++          </div>
++        ) : (
++          <div className="flex items-center justify-center gap-6 mb-6">
++            <button
++              onClick={() => setQty((q) => Math.max(1, q - 1))}
++              className="w-11 h-11 rounded-full bg-mist flex items-center justify-center text-ink active:scale-95 transition-transform"
++            >
++              <PiMinusBold />
++            </button>
++            <span className="font-display text-3xl w-12 text-center figures">{qty}</span>
++            <button
++              onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
++              className="w-11 h-11 rounded-full bg-emerald-600 text-white flex items-center justify-center active:scale-95 transition-transform"
++            >
++              <PiPlusBold />
++            </button>
++          </div>
++        )}
+ 
+         <Button
+           full
+           size="lg"
++          disabled={!canConfirm}
+           onClick={() => {
+-            onConfirm(product, qty)
++            onConfirm(product, isWeightPriced ? weight : qty)
+             onClose()
+           }}
+         >
+-          Add to cart · {formatINR(product.price * qty)}
++          {canConfirm ? `Add to cart · ${formatINR(amount)}` : 'Enter a weight'}
+         </Button>
+       </div>
+     </div>
+diff -ru orig/ayinipos-frontend-main/src/components/products/ProductFormModal.jsx ayinipos-frontend-main/src/components/products/ProductFormModal.jsx
+--- orig/ayinipos-frontend-main/src/components/products/ProductFormModal.jsx	2026-07-14 11:25:00.000000000 +0000
++++ ayinipos-frontend-main/src/components/products/ProductFormModal.jsx	2026-07-16 08:58:35.640134596 +0000
+@@ -12,6 +12,7 @@
+   stock: '0',
+   lowStockLimit: '10',
+   image: '',
++  unit: 'pcs',
+ }
+ 
+ export default function ProductFormModal({ open, onClose, onSubmit, categories, initial }) {
+@@ -30,6 +31,7 @@
+         stock: initial.stock,
+         lowStockLimit: initial.lowStockLimit,
+         image: initial.image || '',
++        unit: initial.unit || 'pcs',
+       })
+     } else {
+       setForm(blankForm)
+@@ -63,14 +65,18 @@
+     }
+   }
+ 
++  const isWeightPriced = form.unit === 'kg'
++
+   function handleSubmit(e) {
+     e.preventDefault()
+     onSubmit({
+       ...form,
+       price: Number(form.price),
+       gst: Number(form.gst),
+-      stock: Number(form.stock),
+-      lowStockLimit: Number(form.lowStockLimit),
++      stock: isWeightPriced ? 0 : Number(form.stock),
++      lowStockLimit: isWeightPriced ? 0 : Number(form.lowStockLimit),
++      unit: form.unit,
++      trackStock: !isWeightPriced,
+     })
+   }
+ 
+@@ -152,21 +158,59 @@
+           <input value={form.barcode} onChange={(e) => update('barcode', e.target.value)} className="input figures" />
+         </Field>
+ 
+-        <Field label="Selling price">
++        <Field label="Sold by">
++          <div className="grid grid-cols-2 gap-2">
++            <button
++              type="button"
++              onClick={() => update('unit', 'pcs')}
++              className={`rounded-xl py-2.5 text-sm font-medium border transition-colors ${
++                form.unit === 'pcs'
++                  ? 'bg-emerald-600 text-white border-emerald-600'
++                  : 'bg-porcelain text-ledger border-mist'
++              }`}
++            >
++              Piece
++            </button>
++            <button
++              type="button"
++              onClick={() => update('unit', 'kg')}
++              className={`rounded-xl py-2.5 text-sm font-medium border transition-colors ${
++                form.unit === 'kg'
++                  ? 'bg-emerald-600 text-white border-emerald-600'
++                  : 'bg-porcelain text-ledger border-mist'
++              }`}
++            >
++              Weight (kg)
++            </button>
++          </div>
++        </Field>
++
++        <Field label={isWeightPriced ? 'Rate per kg' : 'Selling price'}>
+           <input type="number" required value={form.price} onChange={(e) => update('price', e.target.value)} className="input figures" />
+         </Field>
+ 
+-        <div className="grid grid-cols-3 gap-3">
+-          <Field label="GST %">
+-            <input type="number" value={form.gst} onChange={(e) => update('gst', e.target.value)} className="input figures" />
+-          </Field>
+-          <Field label="Stock">
+-            <input type="number" value={form.stock} onChange={(e) => update('stock', e.target.value)} className="input figures" />
+-          </Field>
+-          <Field label="Low stock at">
+-            <input type="number" value={form.lowStockLimit} onChange={(e) => update('lowStockLimit', e.target.value)} className="input figures" />
+-          </Field>
+-        </div>
++        {isWeightPriced ? (
++          <>
++            <Field label="GST %">
++              <input type="number" value={form.gst} onChange={(e) => update('gst', e.target.value)} className="input figures" />
++            </Field>
++            <p className="text-xs text-ledger">
++              Weight-priced items don't track stock — billing will show a weight input instead of a quantity stepper.
++            </p>
++          </>
++        ) : (
++          <div className="grid grid-cols-3 gap-3">
++            <Field label="GST %">
++              <input type="number" value={form.gst} onChange={(e) => update('gst', e.target.value)} className="input figures" />
++            </Field>
++            <Field label="Stock">
++              <input type="number" value={form.stock} onChange={(e) => update('stock', e.target.value)} className="input figures" />
++            </Field>
++            <Field label="Low stock at">
++              <input type="number" value={form.lowStockLimit} onChange={(e) => update('lowStockLimit', e.target.value)} className="input figures" />
++            </Field>
++          </div>
++        )}
+ 
+         <Button type="submit" full size="lg" className="mt-2">
+           {initial ? 'Save changes' : 'Add product'}

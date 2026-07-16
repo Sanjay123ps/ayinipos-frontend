@@ -4,7 +4,7 @@ import { PiMinusBold, PiPlusBold, PiTrashSimpleBold, PiXBold } from 'react-icons
 import { useCart } from '../../context/CartContext'
 import Button from '../ui/Button'
 import ProductAvatar from '../ui/ProductAvatar'
-import { formatINR } from '../../utils/currency'
+import { formatINR, round2 } from '../../utils/currency'
 import { searchCustomers } from '../../services/api'
 
 const paymentModes = ['Cash', 'UPI', 'Card', 'Credit']
@@ -72,19 +72,30 @@ export default function CartDrawer({ open, onClose, paymentMode, onPaymentMode, 
               <ProductAvatar product={item} className="w-11 h-11 text-xl" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-ink truncate">{item.name}</p>
-                <p className="text-xs text-ledger figures">{formatINR(item.price)} each</p>
+                <p className="text-xs text-ledger figures">
+                  {formatINR(item.price)}{item.unit === 'kg' ? '/kg' : ' each'}
+                </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => updateQty(item.id, item.qty - 1)}
+                  onClick={() =>
+                    updateQty(item.id, item.unit === 'kg' ? round2(item.qty - 0.25) : item.qty - 1)
+                  }
                   className="w-7 h-7 rounded-full bg-mist flex items-center justify-center text-ink"
                 >
                   <PiMinusBold size={12} />
                 </button>
-                <span className="text-sm w-5 text-center figures">{item.qty}</span>
+                <span className="text-sm w-8 text-center figures">
+                  {item.unit === 'kg' ? `${item.qty}kg` : item.qty}
+                </span>
                 <button
-                  onClick={() => updateQty(item.id, Math.min(item.stock, item.qty + 1))}
-                  disabled={item.qty >= item.stock}
+                  onClick={() =>
+                    updateQty(
+                      item.id,
+                      item.unit === 'kg' ? round2(item.qty + 0.25) : Math.min(item.stock, item.qty + 1)
+                    )
+                  }
+                  disabled={item.unit !== 'kg' && item.qty >= item.stock}
                   className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <PiPlusBold size={12} />
