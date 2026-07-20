@@ -239,8 +239,8 @@ export async function getSuppliers() {
   return data
 }
 
-export async function createPurchase({ supplier, invoiceNo, date, items }) {
-  const { data } = await http.post('/purchases', { supplier, invoiceNo, date, items })
+export async function createPurchase({ supplier, invoiceNo, date, items, billImage, notes }) {
+  const { data } = await http.post('/purchases', { supplier, invoiceNo, date, items, billImage, notes })
   return { ...data, items: Array.isArray(data.items) ? data.items.length : data.items }
 }
 
@@ -249,8 +249,10 @@ export async function getPurchase(billNo) {
   return data
 }
 
-export async function updatePurchase(billNo, { supplier, invoiceNo, date, items }) {
-  const { data } = await http.put(`/purchases/${billNo}`, { supplier, invoiceNo, date, items })
+// `billImage` intentionally supports undefined ("leave the existing image
+// untouched") vs '' ("remove it") — see purchaseModel.updatePurchase.
+export async function updatePurchase(billNo, { supplier, invoiceNo, date, items, billImage, notes }) {
+  const { data } = await http.put(`/purchases/${billNo}`, { supplier, invoiceNo, date, items, billImage, notes })
   return { ...data, items: Array.isArray(data.items) ? data.items.length : data.items }
 }
 
