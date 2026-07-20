@@ -29,3 +29,20 @@ export function fileToCompressedDataUrl(file, maxDim = 640, quality = 0.82) {
     reader.readAsDataURL(file)
   })
 }
+
+const BILL_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+const BILL_IMAGE_ALLOWED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+
+// Validates a supplier purchase-bill upload (JPG/JPEG/PNG/WEBP, 5MB max —
+// checked on the original file, before any compression) and resolves to a
+// base64 data URL. Kept at a higher resolution than product photos
+// (1600px vs 640px) since a bill needs to stay legible when viewed later.
+export function validateAndReadBillImage(file, maxDim = 1600, quality = 0.85) {
+  if (!BILL_IMAGE_ALLOWED_TYPES.has(file.type)) {
+    return Promise.reject(new Error('Unsupported file type. Please upload a JPG, PNG, or WEBP image.'))
+  }
+  if (file.size > BILL_IMAGE_MAX_BYTES) {
+    return Promise.reject(new Error('File exceeds the 5 MB size limit.'))
+  }
+  return fileToCompressedDataUrl(file, maxDim, quality)
+}
