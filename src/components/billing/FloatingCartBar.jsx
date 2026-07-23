@@ -5,7 +5,7 @@ export default function FloatingCartBar({ itemCount, total, onOpen }) {
   if (itemCount === 0) return null
 
   return (
-    <div className="fixed left-0 right-0 z-40" style={{ bottom: '92px' }}>
+    <div className="fixed left-0 right-0 z-40" style={{ bottom: 'calc(92px + env(safe-area-inset-bottom))' }}>
       <div className="max-w-xl mx-auto px-3">
         <button
           onClick={onOpen}
