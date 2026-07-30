@@ -11,7 +11,7 @@ const baseURL = import.meta.env.VITE_API_URL || '/api'
 
 export const http = axios.create({
   baseURL,
-  timeout: 15000,
+  timeout: 45000,
 })
 
 // ---- Auth token handling --------------------------------------------------
