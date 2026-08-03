@@ -60,6 +60,6 @@ if you want to swap that for sessionStorage instead).
 3. Make sure the backend's `CORS_ORIGIN` env var matches this site's exact
    deployed URL, or requests will be blocked by the browser.
 4. Log in with the admin credentials from the backend's `npm run db:seed`
-   output (default `admin` / `admin123` unless you set
+   output (default `` / `` unless you set
    `SEED_ADMIN_USERNAME`/`SEED_ADMIN_PASSWORD` before seeding) — change the
    password from Settings → Change Password once you're in.
