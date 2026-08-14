@@ -36,11 +36,14 @@ export default function ChangePassword() {
       <TopBar title="Change Password" subtitle="Update your login password" backTo="/more" />
 
       <Card>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3" autoComplete="on">
           <div>
-            <label className="text-xs font-medium text-ledger mb-1.5 block">Current password</label>
+            <label htmlFor="change-pw-current" className="text-xs font-medium text-ledger mb-1.5 block">Current password</label>
             <input
+              id="change-pw-current"
+              name="current-password"
               type="password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
@@ -48,9 +51,12 @@ export default function ChangePassword() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-ledger mb-1.5 block">New password</label>
+            <label htmlFor="change-pw-new" className="text-xs font-medium text-ledger mb-1.5 block">New password</label>
             <input
+              id="change-pw-new"
+              name="new-password"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
@@ -60,9 +66,12 @@ export default function ChangePassword() {
             <p className="text-xs text-ledger mt-1.5">At least 6 characters.</p>
           </div>
           <div>
-            <label className="text-xs font-medium text-ledger mb-1.5 block">Confirm new password</label>
+            <label htmlFor="change-pw-confirm" className="text-xs font-medium text-ledger mb-1.5 block">Confirm new password</label>
             <input
+              id="change-pw-confirm"
+              name="confirm-password"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
