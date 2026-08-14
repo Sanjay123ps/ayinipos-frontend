@@ -23,7 +23,10 @@ export default function QuantitySheet({ product, onConfirm, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-white rounded-t-[28px] shadow-lift p-5 pb-8 animate-[slideUp_0.18s_ease-out]">
+      <div
+        className="relative w-full max-w-xl bg-white rounded-t-[28px] shadow-lift p-5 animate-[slideUp_0.18s_ease-out]"
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+      >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-mist flex items-center justify-center text-ledger"
