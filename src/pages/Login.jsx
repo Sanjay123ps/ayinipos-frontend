@@ -42,8 +42,12 @@ export default function Login() {
         className="bg-white rounded-card shadow-soft p-6 pb-8 perforated-bottom space-y-4"
       >
         <div>
-          <label className="text-xs font-medium text-ledger mb-1.5 block">Username</label>
+          <label htmlFor="login-username" className="text-xs font-medium text-ledger mb-1.5 block">Username</label>
           <input
+            id="login-username"
+            name="username"
+            type="text"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="admin"
@@ -51,9 +55,12 @@ export default function Login() {
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-ledger mb-1.5 block">Password</label>
+          <label htmlFor="login-password" className="text-xs font-medium text-ledger mb-1.5 block">Password</label>
           <input
+            id="login-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
