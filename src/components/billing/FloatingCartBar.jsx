@@ -5,7 +5,11 @@ export default function FloatingCartBar({ itemCount, total, onOpen }) {
   if (itemCount === 0) return null
 
   return (
-    <div className="fixed left-0 right-0 z-40" style={{ bottom: 'calc(92px + env(safe-area-inset-bottom))' }}>
+    // Sits just above the real BottomNav height (measured in BottomNav.jsx),
+    // so it stays correctly positioned across devices instead of relying on
+    // a separately hardcoded height guess that could drift out of sync with
+    // the nav's actual size.
+    <div className="fixed left-0 right-0 z-40" style={{ bottom: 'calc(var(--bottom-nav-height, 92px) + 12px)' }}>
       <div className="max-w-xl mx-auto px-3">
         <button
           onClick={onOpen}
