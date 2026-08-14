@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { PiEyeBold, PiEyeSlashBold } from 'react-icons/pi'
 import { useAuth } from '../context/AuthContext'
 import Button from '../components/ui/Button'
 
@@ -9,6 +10,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -56,16 +58,28 @@ export default function Login() {
         </div>
         <div>
           <label htmlFor="login-password" className="text-xs font-medium text-ledger mb-1.5 block">Password</label>
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full rounded-xl border border-mist bg-porcelain px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/40"
-          />
+          <div className="relative">
+            <input
+              id="login-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-xl border border-mist bg-porcelain px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-ledger hover:text-ink"
+              tabIndex={-1}
+            >
+              {showPassword ? <PiEyeSlashBold size={18} /> : <PiEyeBold size={18} />}
+            </button>
+          </div>
         </div>
         {error && <p className="text-xs text-chili-600">{error}</p>}
         <Button type="submit" full disabled={submitting}>
