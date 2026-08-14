@@ -8,7 +8,14 @@ export default function TopBar({ title, subtitle, right, backTo }) {
 
   return (
     <header className="sticky top-0 z-30 bg-porcelain/95 backdrop-blur-sm">
-      <div className="max-w-xl mx-auto px-4 pt-5 pb-3 flex items-center justify-between">
+      {/* Guards against the status bar / a display cutout overlapping the
+          title in any wrapper that renders this app edge-to-edge behind
+          the top system UI. A no-op (adds 0) in a normal browser tab,
+          where env(safe-area-inset-top) is 0. */}
+      <div
+        className="max-w-xl mx-auto px-4 pb-3 flex items-center justify-between"
+        style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top))' }}
+      >
         <div className="flex items-center gap-2">
           {backTo && (
             <Link
