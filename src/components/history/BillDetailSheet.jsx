@@ -30,7 +30,10 @@ export default function BillDetailSheet({ bill, onClose, onDelete, deleting }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-4">
+        <div
+          className="flex-1 overflow-y-auto px-5 space-y-3"
+          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        >
           <div className="bg-white rounded-2xl shadow-soft p-4 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-ink">{bill.customerName || 'Walk-in customer'}</p>
