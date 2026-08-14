@@ -8,9 +8,9 @@ const blankForm = {
   category: '',
   barcode: '',
   price: '',
-  gst: '5',
+  gst: '0',
   stock: '0',
-  lowStockLimit: '10',
+  lowStockLimit: '5',
   image: '',
   unit: 'pcs',
 }
