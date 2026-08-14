@@ -14,7 +14,10 @@ export default function CloseCreditSheet({ bill, onClose, onConfirm, closing }) 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-porcelain rounded-t-[28px] shadow-lift p-5 animate-[slideUp_0.18s_ease-out]">
+      <div
+        className="relative w-full max-w-xl bg-porcelain rounded-t-[28px] shadow-lift p-5 animate-[slideUp_0.18s_ease-out]"
+        style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}
+      >
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="font-display text-lg text-ink">Close credit bill</h2>
