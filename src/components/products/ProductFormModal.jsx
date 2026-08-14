@@ -85,7 +85,8 @@ export default function ProductFormModal({ open, onClose, onSubmit, categories, 
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
       <form
         onSubmit={handleSubmit}
-        className="relative w-full max-w-xl bg-porcelain rounded-t-[28px] shadow-lift max-h-[88vh] overflow-y-auto p-5 pb-8 space-y-3 animate-[slideUp_0.18s_ease-out]"
+        className="relative w-full max-w-xl bg-porcelain rounded-t-[28px] shadow-lift max-h-[88vh] overflow-y-auto p-5 space-y-3 animate-[slideUp_0.18s_ease-out]"
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-between mb-1">
           <h2 className="font-display text-lg text-ink">
