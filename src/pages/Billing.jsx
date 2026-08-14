@@ -41,12 +41,16 @@ export default function Billing() {
     setGenerating(true)
     try {
       const bill = await createBill({
-        // Only id/qty travel over the wire — the server re-reads price,
-        // gst, name, and stock straight from the products table for every
-        // line anyway (see saleModel.js), so shipping the full cart objects
-        // (which can carry a ~30-100KB base64 product photo each) was pure
-        // waste and is what was tripping the body-size limit.
-        items: items.map(({ id, qty }) => ({ id, qty })),
+        // Only id/qty/finalPrice travel over the wire — the server re-reads
+        // price, gst, name, and stock straight from the products table for
+        // every line anyway (see saleModel.js), so shipping the full cart
+        // objects (which can carry a ~30-100KB base64 product photo each)
+        // was pure waste and is what was tripping the body-size limit.
+        // finalPrice is the one cart-side number the server can't derive
+        // itself — it's the cashier's manually edited line total from the
+        // Final Price Editor, sent as null when a line wasn't edited so the
+        // server falls back to its own price × qty calculation.
+        items: items.map(({ id, qty, finalPrice }) => ({ id, qty, finalPrice: finalPrice ?? null })),
         discountPercent,
         customerMobile,
         customerName,
