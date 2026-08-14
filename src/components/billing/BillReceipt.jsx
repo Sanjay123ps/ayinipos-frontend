@@ -7,7 +7,12 @@ export default function BillReceipt({ bill, storeName = 'Ayini Home Products', o
 
   function sendToWhatsApp() {
     const lines = bill.items.map(
-      (i) => `${i.name} x${i.qty} - ${formatINR(i.price * i.qty)}`
+      // lineSubtotal is what was actually billed for this line (the Final
+      // Price Editor's override when the cashier used it, otherwise the
+      // normal price × qty) — using it here instead of recomputing
+      // price × qty keeps the WhatsApp message in sync with the receipt
+      // and the stored sale.
+      (i) => `${i.name} x${i.qty} - ${formatINR(i.lineSubtotal)}`
     )
     const message = [
       `*${storeName}*`,
@@ -44,7 +49,7 @@ export default function BillReceipt({ bill, storeName = 'Ayini Home Products', o
           {bill.items.map((i) => (
             <div key={i.id} className="flex justify-between text-ledger">
               <span className="truncate pr-2">{i.name} x{i.qty}</span>
-              <span className="figures shrink-0">{formatINR(i.price * i.qty)}</span>
+              <span className="figures shrink-0">{formatINR(i.lineSubtotal)}</span>
             </div>
           ))}
         </div>
